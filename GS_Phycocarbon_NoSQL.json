@@ -1,0 +1,232 @@
+{
+  "projeto": "Phycocarbon — Modelagem NoSQL",
+  "disciplina": "Mastering Relational and Non-Relational Database",
+  "fiap": "Global Solution 2026/1 | 2TDS",
+
+  "justificativa": {
+    "titulo": "Por que usar NoSQL para TB_METRICAS_TANQUE?",
+    "problema_relacional": [
+      "TB_METRICAS_TANQUE e uma tabela de serie temporal que cresce continuamente.",
+      "Em producao, sensores ESP32 enviam leituras a cada 30 segundos por tanque.",
+      "Com 16 tanques ativos e leituras a cada 30s, sao 46.080 registros por dia.",
+      "Em 1 ano: mais de 16 milhoes de registros em uma unica tabela Oracle.",
+      "Consultas de range por periodo ficam lentas mesmo com indices.",
+      "O schema fixo do Oracle nao e ideal para payloads IoT que podem variar."
+    ],
+    "solucao_nosql": [
+      "Banco orientado a documentos (ex: MongoDB) armazena cada leitura como documento JSON.",
+      "Escalabilidade horizontal via sharding por id_tanque ou dt_leitura.",
+      "Schema flexivel permite adicionar novos sensores sem ALTER TABLE.",
+      "Indices compostos em (id_tanque, dt_leitura) sao nativos e performaticos.",
+      "Time-series collections do MongoDB 5+ sao otimizadas exatamente para este caso.",
+      "Replicacao automatica garante alta disponibilidade para dados de monitoramento."
+    ],
+    "banco_recomendado": "MongoDB (colecao do tipo Time Series)",
+    "teorema_cap": "AP — Disponibilidade + Tolerancia a particao (eventual consistency aceitavel para IoT)"
+  },
+
+  "comparativo_sql_nosql": {
+    "oracle_relacional": {
+      "vantagens": [
+        "ACID completo — ideal para transacoes financeiras (marketplace, creditos de carbono)",
+        "JOINs complexos entre tabelas (relatorios gerenciais)",
+        "Constraints e integridade referencial garantidas pelo banco",
+        "Suporte nativo a PL/SQL para regras de negocio complexas"
+      ],
+      "desvantagens": [
+        "Escalabilidade vertical (scale-up) — mais cara",
+        "Schema rigido — ALTER TABLE em tabelas grandes e custoso",
+        "Performance degrada em inserts massivos de serie temporal",
+        "Armazenamento menos eficiente para dados semiestruturados"
+      ],
+      "usar_para": [
+        "TB_USUARIO", "TB_FAZENDA", "TB_TANQUE",
+        "TB_LOTE_BIOMASSA", "TB_CREDITO_CARBONO", "TB_TRANSACAO_MARKETPLACE"
+      ]
+    },
+    "mongodb_nosql": {
+      "vantagens": [
+        "Escalabilidade horizontal (sharding) — ideal para alto volume",
+        "Schema flexivel — novos sensores sem migracao de schema",
+        "Time Series Collections otimizadas para dados IoT",
+        "Inserts de alta frequencia sem degradacao de performance",
+        "Compressao nativa de dados temporais (ate 80% de reducao)"
+      ],
+      "desvantagens": [
+        "Sem JOINs nativos — aggregation pipeline e mais complexo",
+        "Eventual consistency — nao ideal para transacoes financeiras",
+        "Sem constraints de FK — integridade e responsabilidade da aplicacao",
+        "Curva de aprendizado para queries complexas (aggregation)"
+      ],
+      "usar_para": [
+        "metricas_tanque (serie temporal IoT)",
+        "logs de dispositivos ESP32",
+        "cache de previsoes de IA",
+        "payloads brutos MQTT"
+      ]
+    }
+  },
+
+  "modelagem_documento": {
+    "colecao": "metricas_tanque",
+    "tipo": "Time Series Collection",
+    "campo_tempo": "dt_leitura",
+    "campo_metadata": "metadata",
+    "descricao": "Cada documento representa uma leitura de sensor de um tanque",
+
+    "estrutura_documento": {
+      "_id": { "tipo": "ObjectId", "descricao": "Identificador unico gerado pelo MongoDB" },
+      "dt_leitura": { "tipo": "Date", "descricao": "Timestamp da leitura — campo principal da serie temporal" },
+      "metadata": {
+        "descricao": "Campos de agrupamento indexados para queries de monitoramento",
+        "id_tanque": { "tipo": "int", "descricao": "FK logica para o tanque (referencia ao Oracle)" },
+        "id_dispositivo": { "tipo": "int", "descricao": "FK logica para o dispositivo ESP32" },
+        "codigo_serie": { "tipo": "string", "descricao": "Numero de serie do hardware para rastreabilidade" },
+        "id_fazenda": { "tipo": "int", "descricao": "Desnormalizacao para queries por fazenda sem lookup" },
+        "tipo_alga": { "tipo": "string", "descricao": "Especie cultivada — evita JOIN com colecao de tanques" }
+      },
+      "leitura": {
+        "descricao": "Valores medidos pelo sensor no momento da coleta",
+        "ph": { "tipo": "double", "descricao": "pH da solucao (escala 0-14)" },
+        "temperatura": { "tipo": "double", "descricao": "Temperatura em graus Celsius" },
+        "turbidez": { "tipo": "double", "descricao": "Turbidez em NTU" },
+        "luminosidade": { "tipo": "double", "descricao": "Luminosidade em lux" }
+      },
+      "alertas_gerados": {
+        "descricao": "Array de alertas automaticos detectados nesta leitura",
+        "tipo": "array",
+        "item": {
+          "tipo_alerta": "string",
+          "severidade": "string",
+          "mensagem": "string"
+        }
+      },
+      "payload_original": { "tipo": "string", "descricao": "JSON bruto enviado pelo ESP32 via MQTT" }
+    }
+  },
+
+  "exemplos_documentos": [
+    {
+      "_id": "ObjectId('665a1b2c3d4e5f6a7b8c9d0e')",
+      "dt_leitura": "2026-05-25T14:32:00.000Z",
+      "metadata": {
+        "id_tanque": 1,
+        "id_dispositivo": 1,
+        "codigo_serie": "ESP32-F1-TQ001-A2C4",
+        "id_fazenda": 1,
+        "tipo_alga": "Spirulina platensis"
+      },
+      "leitura": {
+        "ph": 9.35,
+        "temperatura": 34.1,
+        "turbidez": 47.8,
+        "luminosidade": 13200
+      },
+      "alertas_gerados": [],
+      "payload_original": "{\"ph\":9.35,\"temp\":34.1,\"turb\":47.8,\"lux\":13200,\"ts\":1716647520}"
+    },
+    {
+      "_id": "ObjectId('665a1b2c3d4e5f6a7b8c9d1f')",
+      "dt_leitura": "2026-05-28T09:15:00.000Z",
+      "metadata": {
+        "id_tanque": 1,
+        "id_dispositivo": 1,
+        "codigo_serie": "ESP32-F1-TQ001-A2C4",
+        "id_fazenda": 1,
+        "tipo_alga": "Spirulina platensis"
+      },
+      "leitura": {
+        "ph": 11.20,
+        "temperatura": 34.5,
+        "turbidez": 52.1,
+        "luminosidade": 10900
+      },
+      "alertas_gerados": [
+        {
+          "tipo_alerta": "PH_ALTO",
+          "severidade": "ALTA",
+          "mensagem": "pH 11.20 acima do limite maximo (10.50) para Spirulina platensis"
+        }
+      ],
+      "payload_original": "{\"ph\":11.20,\"temp\":34.5,\"turb\":52.1,\"lux\":10900,\"ts\":1716887700}"
+    },
+    {
+      "_id": "ObjectId('665a1b2c3d4e5f6a7b8c9d2a')",
+      "dt_leitura": "2026-05-29T11:00:00.000Z",
+      "metadata": {
+        "id_tanque": 2,
+        "id_dispositivo": 2,
+        "codigo_serie": "ESP32-F1-TQ002-B3D5",
+        "id_fazenda": 1,
+        "tipo_alga": "Spirulina platensis"
+      },
+      "leitura": {
+        "ph": 9.00,
+        "temperatura": 40.3,
+        "turbidez": 50.0,
+        "luminosidade": 9800
+      },
+      "alertas_gerados": [
+        {
+          "tipo_alerta": "TEMPERATURA_ALTA",
+          "severidade": "CRITICA",
+          "mensagem": "Temperatura 40.3C acima do limite maximo (38.0C) para Spirulina platensis"
+        }
+      ],
+      "payload_original": "{\"ph\":9.00,\"temp\":40.3,\"turb\":50.0,\"lux\":9800,\"ts\":1716980400}"
+    }
+  ],
+
+  "indices_recomendados": [
+    {
+      "nome": "idx_tanque_dt",
+      "campos": { "metadata.id_tanque": 1, "dt_leitura": -1 },
+      "tipo": "composto",
+      "justificativa": "Principal indice — consultas de monitoramento por tanque em periodo"
+    },
+    {
+      "nome": "idx_fazenda_dt",
+      "campos": { "metadata.id_fazenda": 1, "dt_leitura": -1 },
+      "tipo": "composto",
+      "justificativa": "Dashboard por fazenda — agrega metricas de todos os tanques"
+    },
+    {
+      "nome": "idx_alertas",
+      "campos": { "alertas_gerados.tipo_alerta": 1 },
+      "tipo": "multikey",
+      "justificativa": "Busca rapida de leituras que geraram alertas especificos"
+    }
+  ],
+
+  "exemplos_queries_mongodb": {
+    "descricao": "Queries equivalentes às usadas nos relatorios Oracle",
+
+    "ultimas_leituras_tanque": {
+      "descricao": "Equivalente ao SELECT com ORDER BY dt_leitura DESC LIMIT 10",
+      "query": "db.metricas_tanque.find({ 'metadata.id_tanque': 1 }).sort({ dt_leitura: -1 }).limit(10)"
+    },
+
+    "media_ph_ultimos_7_dias": {
+      "descricao": "Equivalente ao AVG(ph) com filtro de data",
+      "query": "db.metricas_tanque.aggregate([ { $match: { 'metadata.id_tanque': 1, dt_leitura: { $gte: new Date(Date.now() - 7*24*60*60*1000) } } }, { $group: { _id: '$metadata.id_tanque', media_ph: { $avg: '$leitura.ph' }, media_temp: { $avg: '$leitura.temperatura' } } } ])"
+    },
+
+    "leituras_com_alertas": {
+      "descricao": "Busca leituras que geraram pelo menos um alerta",
+      "query": "db.metricas_tanque.find({ 'alertas_gerados.0': { $exists: true } }).sort({ dt_leitura: -1 })"
+    },
+
+    "dashboard_por_fazenda": {
+      "descricao": "Agrupa metricas por fazenda — equivalente ao Relatorio 1 do Oracle",
+      "query": "db.metricas_tanque.aggregate([ { $match: { dt_leitura: { $gte: new Date(Date.now() - 24*60*60*1000) } } }, { $group: { _id: '$metadata.id_fazenda', total_leituras: { $sum: 1 }, media_ph: { $avg: '$leitura.ph' }, media_temp: { $avg: '$leitura.temperatura' }, total_alertas: { $sum: { $size: '$alertas_gerados' } } } }, { $sort: { total_alertas: -1 } } ])"
+    }
+  },
+
+  "arquitetura_hibrida": {
+    "descricao": "Arquitetura recomendada para producao — Oracle + MongoDB complementares",
+    "oracle": "Dados transacionais, relacionais e financeiros (fazendas, usuarios, lotes, creditos, transacoes)",
+    "mongodb": "Serie temporal IoT de alto volume (metricas dos sensores ESP32)",
+    "integracao": "API de ingestao grava simultaneamente: metricas no MongoDB (tempo real) e alertas no Oracle (via trigger equivalente na aplicacao)",
+    "beneficio": "Cada banco faz o que faz de melhor — Oracle garante ACID nas transacoes, MongoDB garante escala nas metricas"
+  }
+}
