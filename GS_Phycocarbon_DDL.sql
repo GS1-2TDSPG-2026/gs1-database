@@ -1,6 +1,6 @@
 -- PROJETO: Phycocarbon — Plataforma de Monitoramento de Microalgas
 -- DISCIPLINA: Mastering Relational and Non-Relational Database
--- FIAP Global Solution 2026/1 | 2TDSPG 
+-- FIAP Global Solution 2026 | 2TDSPG 
 
 -- SECAO 0: LIMPEZA DO AMBIENTE
 -- Drops de tabelas 
