@@ -2,7 +2,9 @@
 -- DISCIPLINA: Mastering Relational and Non-Relational Database
 -- FIAP Global Solution 2026 | 2TDSPG 
 
--- SECAO 1: BLOCOS ANONIMOS (6 obrigatorios)
+SET SERVEROUTPUT ON;
+
+-- SECAO 1: BLOCOS ANONIMOS
 -- BLOCO 1: Consulta de status de um tanque pelo ID
 
 DECLARE
@@ -298,7 +300,7 @@ EXCEPTION
 END;
 /
 
--- SECAO 2: CURSORES EXPLICITOS (4 obrigatorios)
+-- SECAO 2: CURSORES EXPLICITOS 
 -- CURSOR 1: Listar todos os tanques ativos com seus dispositivos IoT
 
 DECLARE
@@ -486,7 +488,7 @@ EXCEPTION
 END;
 /
 
--- SECAO 3: RELATORIOS SQL COM JOIN (5 obrigatorios)
+-- SECAO 3: RELATORIOS SQL COM JOIN
 
 -- RELATORIO 1: Dashboard por fazenda — tanques, alertas e ultima leitura
 
@@ -771,10 +773,10 @@ BEGIN
             v_mensagem    := 'pH ' || :NEW.ph || ' abaixo do limite minimo (' || v_ph_min || ') para o tanque ID ' || :NEW.id_tanque;
 
             INSERT INTO TB_ALERTA_CRITICO (
-                id_alerta, id_metrica, id_tanque,
+                id_metrica, id_tanque,
                 tipo_alerta, severidade, mensagem, status
             ) VALUES (
-                SQ_ALERTA_CRITICO.NEXTVAL, :NEW.id_metrica, :NEW.id_tanque,
+                :NEW.id_metrica, :NEW.id_tanque,
                 v_tipo_alerta, v_severidade, v_mensagem, 'ABERTO'
             );
 
@@ -784,10 +786,10 @@ BEGIN
             v_mensagem    := 'pH ' || :NEW.ph || ' acima do limite maximo (' || v_ph_max || ') para o tanque ID ' || :NEW.id_tanque;
 
             INSERT INTO TB_ALERTA_CRITICO (
-                id_alerta, id_metrica, id_tanque,
+                id_metrica, id_tanque,
                 tipo_alerta, severidade, mensagem, status
             ) VALUES (
-                SQ_ALERTA_CRITICO.NEXTVAL, :NEW.id_metrica, :NEW.id_tanque,
+                :NEW.id_metrica, :NEW.id_tanque,
                 v_tipo_alerta, v_severidade, v_mensagem, 'ABERTO'
             );
         END IF;
@@ -800,10 +802,10 @@ BEGIN
             v_mensagem    := 'Temperatura ' || :NEW.temperatura || 'C acima do limite maximo (' || v_temp_max || 'C) para o tanque ID ' || :NEW.id_tanque;
 
             INSERT INTO TB_ALERTA_CRITICO (
-                id_alerta, id_metrica, id_tanque,
+                id_metrica, id_tanque,
                 tipo_alerta, severidade, mensagem, status
             ) VALUES (
-                SQ_ALERTA_CRITICO.NEXTVAL, :NEW.id_metrica, :NEW.id_tanque,
+                :NEW.id_metrica, :NEW.id_tanque,
                 v_tipo_alerta, v_severidade, v_mensagem, 'ABERTO'
             );
 
@@ -813,10 +815,10 @@ BEGIN
             v_mensagem    := 'Temperatura ' || :NEW.temperatura || 'C abaixo do limite minimo (' || v_temp_min || 'C) para o tanque ID ' || :NEW.id_tanque;
 
             INSERT INTO TB_ALERTA_CRITICO (
-                id_alerta, id_metrica, id_tanque,
+                id_metrica, id_tanque,
                 tipo_alerta, severidade, mensagem, status
             ) VALUES (
-                SQ_ALERTA_CRITICO.NEXTVAL, :NEW.id_metrica, :NEW.id_tanque,
+                :NEW.id_metrica, :NEW.id_tanque,
                 v_tipo_alerta, v_severidade, v_mensagem, 'ABERTO'
             );
         END IF;
@@ -829,12 +831,13 @@ END TRG_GERA_ALERTA_CRITICO;
 /
 
 INSERT INTO TB_METRICAS_TANQUE (
-    id_metrica, id_dispositivo, id_tanque, dt_leitura,
+    id_dispositivo, id_tanque, dt_leitura,
     ph, temperatura, turbidez, luminosidade
 ) VALUES (
-    SQ_METRICAS_TANQUE.NEXTVAL, 1, 1,
+    1, 1,
     SYSTIMESTAMP, 11.80, 34.5, 48.0, 12000
 );
+
 COMMIT;
 
 SELECT id_alerta, tipo_alerta, severidade, mensagem, status
@@ -851,6 +854,7 @@ CREATE OR REPLACE PACKAGE PKG_PHYCOCARBON AS
     PROCEDURE PRC_RESUMO_PLATAFORMA;
 END PKG_PHYCOCARBON;
 /
+
 CREATE OR REPLACE PACKAGE BODY PKG_PHYCOCARBON AS
 
     FUNCTION FN_SAUDE_TANQUE (p_id_tanque IN NUMBER) RETURN NUMBER IS
@@ -866,9 +870,12 @@ CREATE OR REPLACE PACKAGE BODY PKG_PHYCOCARBON AS
         FROM   TB_ALERTA_CRITICO
         WHERE  id_tanque = p_id_tanque
         AND    status IN ('ABERTO', 'EM_ANALISE');
+
         RETURN v_total;
+
     EXCEPTION
-        WHEN OTHERS THEN RETURN 0;
+        WHEN OTHERS THEN
+            RETURN 0;
     END FN_CONTAR_ALERTAS;
 
     PROCEDURE PRC_RELATORIO_FAZENDA (p_id_fazenda IN NUMBER) IS

@@ -2,16 +2,22 @@
 -- DISCIPLINA: Mastering Relational and Non-Relational Database
 -- FIAP Global Solution 2026 | 2TDSPG 
 
--- SECAO 0: LIMPEZA DO AMBIENTE
--- Drops de tabelas 
+SET SERVEROUTPUT ON;
+
+-- ============================================================
+-- SEÇÃO 0: LIMPEZA DO AMBIENTE
+-- ============================================================
+
 BEGIN
     FOR t IN (
-        SELECT table_name FROM user_tables
+        SELECT table_name
+        FROM user_tables
         WHERE table_name IN (
             'TB_TRANSACAO_MARKETPLACE',
             'TB_CREDITO_CARBONO',
             'TB_LOTE_BIOMASSA',
             'TB_PREVISOES_IA',
+            'TB_DADO_ORBITAL_BR',
             'TB_DADO_ORBITAL',
             'TB_ALERTA_CRITICO',
             'TB_METRICAS_TANQUE',
@@ -29,7 +35,8 @@ END;
 
 BEGIN
     FOR s IN (
-        SELECT sequence_name FROM user_sequences
+        SELECT sequence_name
+        FROM user_sequences
         WHERE sequence_name IN (
             'SQ_PERFIL',
             'SQ_USUARIO',
@@ -39,6 +46,7 @@ BEGIN
             'SQ_METRICAS_TANQUE',
             'SQ_ALERTA_CRITICO',
             'SQ_DADO_ORBITAL',
+            'SQ_DADO_ORBITAL_BR',
             'SQ_PREVISOES_IA',
             'SQ_LOTE_BIOMASSA',
             'SQ_CREDITO_CARBONO',
@@ -50,8 +58,9 @@ BEGIN
 END;
 /
 
-
--- SECAO 1: SEQUENCES
+-- ============================================================
+-- SEÇÃO 1: SEQUENCES
+-- ============================================================
 
 CREATE SEQUENCE SQ_PERFIL
     START WITH 1
@@ -101,6 +110,12 @@ CREATE SEQUENCE SQ_DADO_ORBITAL
     CACHE 20
     NOCYCLE;
 
+CREATE SEQUENCE SQ_DADO_ORBITAL_BR
+    START WITH 1
+    INCREMENT BY 1
+    CACHE 20
+    NOCYCLE;
+
 CREATE SEQUENCE SQ_PREVISOES_IA
     START WITH 1
     INCREMENT BY 1
@@ -125,13 +140,16 @@ CREATE SEQUENCE SQ_TRANSACAO_MARKETPLACE
     CACHE 20
     NOCYCLE;
 
-
--- SECAO 2: TABELAS
+-- ============================================================
+-- SEÇÃO 2: TABELAS
+-- ============================================================
 
 CREATE TABLE TB_PERFIL (
     id_perfil       NUMBER(5)       NOT NULL,
     nome_perfil     VARCHAR2(30)    NOT NULL,
     descricao       VARCHAR2(200)   NULL,
+    criado_em       TIMESTAMP       DEFAULT SYSTIMESTAMP NOT NULL,
+    atualizado_em   TIMESTAMP       DEFAULT SYSTIMESTAMP NOT NULL,
 
     CONSTRAINT PK_PERFIL
         PRIMARY KEY (id_perfil),
@@ -148,14 +166,7 @@ CREATE TABLE TB_PERFIL (
         ))
 );
 
-COMMENT ON TABLE  TB_PERFIL              IS 'Catalogo de perfis de acesso ao sistema Phycocarbon';
-COMMENT ON COLUMN TB_PERFIL.id_perfil    IS 'Identificador unico do perfil (PK)';
-COMMENT ON COLUMN TB_PERFIL.nome_perfil  IS 'Nome tecnico do perfil: ADMIN, OPERADOR_CAMPO, INVESTIDOR, COMPRADOR_B2B';
-COMMENT ON COLUMN TB_PERFIL.descricao    IS 'Descricao legivel da funcao e permissoes do perfil';
-
-
 CREATE TABLE TB_USUARIO (
-
     id_usuario      NUMBER(10)      NOT NULL,
     id_perfil       NUMBER(5)       NOT NULL,
     nome            VARCHAR2(100)   NOT NULL,
@@ -163,8 +174,9 @@ CREATE TABLE TB_USUARIO (
     senha_hash      VARCHAR2(255)   NOT NULL,
     telefone        VARCHAR2(20)    NULL,
     status          CHAR(1)         DEFAULT 'A' NOT NULL,
-
     dt_criacao      DATE            DEFAULT SYSDATE NOT NULL,
+    criado_em       TIMESTAMP       DEFAULT SYSTIMESTAMP NOT NULL,
+    atualizado_em   TIMESTAMP       DEFAULT SYSTIMESTAMP NOT NULL,
 
     CONSTRAINT PK_USUARIO
         PRIMARY KEY (id_usuario),
@@ -183,19 +195,7 @@ CREATE TABLE TB_USUARIO (
         CHECK (email LIKE '%@%.%')
 );
 
-COMMENT ON TABLE  TB_USUARIO             IS 'Usuarios cadastrados na plataforma Phycocarbon';
-COMMENT ON COLUMN TB_USUARIO.id_usuario  IS 'Identificador unico do usuario (PK)';
-COMMENT ON COLUMN TB_USUARIO.id_perfil   IS 'FK para TB_PERFIL — define o nivel de acesso';
-COMMENT ON COLUMN TB_USUARIO.nome        IS 'Nome completo do usuario';
-COMMENT ON COLUMN TB_USUARIO.email       IS 'Email unico, utilizado como login';
-COMMENT ON COLUMN TB_USUARIO.senha_hash  IS 'Hash criptografico da senha (bcrypt/SHA-256)';
-COMMENT ON COLUMN TB_USUARIO.telefone    IS 'Telefone de contato no formato +55DDDNUMERO';
-COMMENT ON COLUMN TB_USUARIO.status      IS 'Status da conta: A=Ativo, I=Inativo, B=Bloqueado';
-COMMENT ON COLUMN TB_USUARIO.dt_criacao  IS 'Data e hora do cadastro (DEFAULT SYSDATE)';
-
-
 CREATE TABLE TB_FAZENDA (
-
     id_fazenda              NUMBER(10)      NOT NULL,
     id_usuario_responsavel  NUMBER(10)      NOT NULL,
     nome                    VARCHAR2(100)   NOT NULL,
@@ -205,6 +205,8 @@ CREATE TABLE TB_FAZENDA (
     longitude               NUMBER(11, 7)   NULL,
     status                  VARCHAR2(10)    DEFAULT 'ATIVA' NOT NULL,
     dt_cadastro             DATE            DEFAULT SYSDATE NOT NULL,
+    criado_em               TIMESTAMP       DEFAULT SYSTIMESTAMP NOT NULL,
+    atualizado_em           TIMESTAMP       DEFAULT SYSTIMESTAMP NOT NULL,
 
     CONSTRAINT PK_FAZENDA
         PRIMARY KEY (id_fazenda),
@@ -226,20 +228,7 @@ CREATE TABLE TB_FAZENDA (
         CHECK (status IN ('ATIVA', 'INATIVA', 'SUSPENSA'))
 );
 
-COMMENT ON TABLE  TB_FAZENDA                       IS 'Fazendas biologicas de cultivo de microalgas';
-COMMENT ON COLUMN TB_FAZENDA.id_fazenda            IS 'Identificador unico da fazenda (PK)';
-COMMENT ON COLUMN TB_FAZENDA.id_usuario_responsavel IS 'FK para TB_USUARIO — responsavel tecnico';
-COMMENT ON COLUMN TB_FAZENDA.nome                  IS 'Nome comercial da fazenda';
-COMMENT ON COLUMN TB_FAZENDA.cidade                IS 'Municipio de localizacao da fazenda';
-COMMENT ON COLUMN TB_FAZENDA.uf                    IS 'Sigla do estado (ex: SP, RJ, BA)';
-COMMENT ON COLUMN TB_FAZENDA.latitude              IS 'Latitude geografica decimal (-90 a +90)';
-COMMENT ON COLUMN TB_FAZENDA.longitude             IS 'Longitude geografica decimal (-180 a +180)';
-COMMENT ON COLUMN TB_FAZENDA.status                IS 'Status: ATIVA, INATIVA, SUSPENSA';
-COMMENT ON COLUMN TB_FAZENDA.dt_cadastro           IS 'Data de cadastro da fazenda (DEFAULT SYSDATE)';
-
-
 CREATE TABLE TB_TANQUE (
-
     id_tanque           NUMBER(10)      NOT NULL,
     id_fazenda          NUMBER(10)      NOT NULL,
     codigo_tanque       VARCHAR2(20)    NOT NULL,
@@ -251,6 +240,8 @@ CREATE TABLE TB_TANQUE (
     temperatura_max     NUMBER(5, 2)    NOT NULL,
     status              VARCHAR2(15)    DEFAULT 'ATIVO' NOT NULL,
     dt_instalacao       DATE            DEFAULT SYSDATE NOT NULL,
+    criado_em           TIMESTAMP       DEFAULT SYSTIMESTAMP NOT NULL,
+    atualizado_em       TIMESTAMP       DEFAULT SYSTIMESTAMP NOT NULL,
 
     CONSTRAINT PK_TANQUE
         PRIMARY KEY (id_tanque),
@@ -275,19 +266,6 @@ CREATE TABLE TB_TANQUE (
         CHECK (status IN ('ATIVO', 'INATIVO', 'MANUTENCAO', 'COLHEITA'))
 );
 
-COMMENT ON TABLE  TB_TANQUE                  IS 'Tanques ou biofotorreatores de cultivo de microalgas';
-COMMENT ON COLUMN TB_TANQUE.id_tanque        IS 'Identificador unico do tanque (PK)';
-COMMENT ON COLUMN TB_TANQUE.id_fazenda       IS 'FK para TB_FAZENDA — fazenda proprietaria';
-COMMENT ON COLUMN TB_TANQUE.codigo_tanque    IS 'Codigo fisico do tanque, unico por fazenda (ex: TQ-001)';
-COMMENT ON COLUMN TB_TANQUE.tipo_alga        IS 'Nome cientifico/comercial da especie (ex: Spirulina platensis)';
-COMMENT ON COLUMN TB_TANQUE.capacidade_litros IS 'Volume total do tanque em litros';
-COMMENT ON COLUMN TB_TANQUE.ph_min           IS 'Limite inferior de pH para cultivo saudavel';
-COMMENT ON COLUMN TB_TANQUE.ph_max           IS 'Limite superior de pH para cultivo saudavel';
-COMMENT ON COLUMN TB_TANQUE.temperatura_min  IS 'Temperatura minima em graus Celsius';
-COMMENT ON COLUMN TB_TANQUE.temperatura_max  IS 'Temperatura maxima em graus Celsius';
-COMMENT ON COLUMN TB_TANQUE.status           IS 'Status: ATIVO, INATIVO, MANUTENCAO, COLHEITA';
-COMMENT ON COLUMN TB_TANQUE.dt_instalacao    IS 'Data de instalacao fisica do tanque';
-
 CREATE TABLE TB_DISPOSITIVO_IOT (
     id_dispositivo  NUMBER(10)      NOT NULL,
     id_tanque       NUMBER(10)      NOT NULL,
@@ -296,35 +274,27 @@ CREATE TABLE TB_DISPOSITIVO_IOT (
     modelo          VARCHAR2(50)    NULL,
     ativo           CHAR(1)         DEFAULT 'S' NOT NULL,
     dt_instalacao   DATE            DEFAULT SYSDATE NOT NULL,
+    criado_em       TIMESTAMP       DEFAULT SYSTIMESTAMP NOT NULL,
+    atualizado_em   TIMESTAMP       DEFAULT SYSTIMESTAMP NOT NULL,
 
-    CONSTRAINT PK_DISPOSITIVO_IOT
+    CONSTRAINT PK_TB_DISPOSITIVO_IOT
         PRIMARY KEY (id_dispositivo),
 
-    CONSTRAINT FK_DISPOSITIVO_TANQUE
+    CONSTRAINT FK_TB_DISP_IOT_TANQUE
         FOREIGN KEY (id_tanque)
         REFERENCES TB_TANQUE (id_tanque),
 
-    CONSTRAINT UQ_DISPOSITIVO_SERIE
+    CONSTRAINT UQ_TB_DISP_IOT_SERIE
         UNIQUE (codigo_serie),
 
-    CONSTRAINT UQ_DISPOSITIVO_MQTT
+    CONSTRAINT UQ_TB_DISP_IOT_MQTT
         UNIQUE (topico_mqtt),
 
-    CONSTRAINT CK_DISPOSITIVO_ATIVO
+    CONSTRAINT CK_TB_DISP_IOT_ATIVO
         CHECK (ativo IN ('S', 'N'))
 );
 
-COMMENT ON TABLE  TB_DISPOSITIVO_IOT               IS 'Dispositivos ESP32 instalados nos tanques para monitoramento IoT';
-COMMENT ON COLUMN TB_DISPOSITIVO_IOT.id_dispositivo IS 'Identificador unico do dispositivo (PK)';
-COMMENT ON COLUMN TB_DISPOSITIVO_IOT.id_tanque      IS 'FK para TB_TANQUE — tanque monitorado';
-COMMENT ON COLUMN TB_DISPOSITIVO_IOT.codigo_serie   IS 'Numero de serie unico gravado no hardware';
-COMMENT ON COLUMN TB_DISPOSITIVO_IOT.topico_mqtt    IS 'Topico MQTT para receber mensagens do sensor (ex: algaspace/fazenda/1/tanque/1)';
-COMMENT ON COLUMN TB_DISPOSITIVO_IOT.modelo         IS 'Modelo do hardware (ex: ESP32-WROOM-32)';
-COMMENT ON COLUMN TB_DISPOSITIVO_IOT.ativo          IS 'S=Dispositivo operacional, N=Desativado';
-COMMENT ON COLUMN TB_DISPOSITIVO_IOT.dt_instalacao  IS 'Data de instalacao fisica no tanque';
-
 CREATE TABLE TB_METRICAS_TANQUE (
-
     id_metrica          NUMBER(15)      NOT NULL,
     id_dispositivo      NUMBER(10)      NOT NULL,
     id_tanque           NUMBER(10)      NOT NULL,
@@ -334,6 +304,8 @@ CREATE TABLE TB_METRICAS_TANQUE (
     turbidez            NUMBER(8, 3)    NULL,
     luminosidade        NUMBER(10, 2)   NULL,
     payload_original    VARCHAR2(4000)  NULL,
+    criado_em           TIMESTAMP       DEFAULT SYSTIMESTAMP NOT NULL,
+    atualizado_em       TIMESTAMP       DEFAULT SYSTIMESTAMP NOT NULL,
 
     CONSTRAINT PK_METRICAS_TANQUE
         PRIMARY KEY (id_metrica),
@@ -359,21 +331,7 @@ CREATE TABLE TB_METRICAS_TANQUE (
         CHECK (luminosidade >= 0)
 );
 
-COMMENT ON TABLE  TB_METRICAS_TANQUE                  IS 'Serie temporal de leituras IoT dos sensores instalados nos tanques';
-COMMENT ON COLUMN TB_METRICAS_TANQUE.id_metrica        IS 'Identificador unico da leitura (PK)';
-COMMENT ON COLUMN TB_METRICAS_TANQUE.id_dispositivo    IS 'FK para TB_DISPOSITIVO_IOT — sensor de origem';
-COMMENT ON COLUMN TB_METRICAS_TANQUE.id_tanque         IS 'FK para TB_TANQUE — desnormalizacao para performance';
-COMMENT ON COLUMN TB_METRICAS_TANQUE.dt_leitura        IS 'Timestamp exato da coleta pelo sensor ESP32';
-COMMENT ON COLUMN TB_METRICAS_TANQUE.ph                IS 'pH medido (escala 0 a 14)';
-COMMENT ON COLUMN TB_METRICAS_TANQUE.temperatura       IS 'Temperatura em graus Celsius';
-COMMENT ON COLUMN TB_METRICAS_TANQUE.turbidez          IS 'Turbidez em NTU (Nephelometric Turbidity Units)';
-COMMENT ON COLUMN TB_METRICAS_TANQUE.luminosidade      IS 'Luminosidade em lux';
-COMMENT ON COLUMN TB_METRICAS_TANQUE.payload_original  IS 'JSON bruto enviado pelo ESP32 (auditoria e reprocessamento)';
-
-
-
 CREATE TABLE TB_ALERTA_CRITICO (
-
     id_alerta       NUMBER(15)      NOT NULL,
     id_metrica      NUMBER(15)      NOT NULL,
     id_tanque       NUMBER(10)      NOT NULL,
@@ -382,6 +340,8 @@ CREATE TABLE TB_ALERTA_CRITICO (
     mensagem        VARCHAR2(500)   NOT NULL,
     status          VARCHAR2(15)    DEFAULT 'ABERTO' NOT NULL,
     dt_alerta       TIMESTAMP       DEFAULT SYSTIMESTAMP NOT NULL,
+    criado_em       TIMESTAMP       DEFAULT SYSTIMESTAMP NOT NULL,
+    atualizado_em   TIMESTAMP       DEFAULT SYSTIMESTAMP NOT NULL,
 
     CONSTRAINT PK_ALERTA_CRITICO
         PRIMARY KEY (id_alerta),
@@ -412,17 +372,6 @@ CREATE TABLE TB_ALERTA_CRITICO (
         CHECK (status IN ('ABERTO', 'EM_ANALISE', 'RESOLVIDO', 'IGNORADO'))
 );
 
-COMMENT ON TABLE  TB_ALERTA_CRITICO            IS 'Alertas automaticos gerados por trigger quando metricas saem dos limites';
-COMMENT ON COLUMN TB_ALERTA_CRITICO.id_alerta   IS 'Identificador unico do alerta (PK)';
-COMMENT ON COLUMN TB_ALERTA_CRITICO.id_metrica  IS 'FK para TB_METRICAS_TANQUE — leitura que originou o alerta';
-COMMENT ON COLUMN TB_ALERTA_CRITICO.id_tanque   IS 'FK para TB_TANQUE — tanque com parametro critico';
-COMMENT ON COLUMN TB_ALERTA_CRITICO.tipo_alerta IS 'Tipo: PH_CRITICO, TEMPERATURA_ALTA, TURBIDEZ_FORA_PADRAO, LUMINOSIDADE_BAIXA, etc.';
-COMMENT ON COLUMN TB_ALERTA_CRITICO.severidade  IS 'Nivel de severidade: BAIXA, MEDIA, ALTA, CRITICA';
-COMMENT ON COLUMN TB_ALERTA_CRITICO.mensagem    IS 'Mensagem descritiva gerada automaticamente pelo trigger';
-COMMENT ON COLUMN TB_ALERTA_CRITICO.status      IS 'Status do alerta: ABERTO, EM_ANALISE, RESOLVIDO, IGNORADO';
-COMMENT ON COLUMN TB_ALERTA_CRITICO.dt_alerta   IS 'Timestamp de geracao do alerta pelo trigger';
-
-
 CREATE TABLE TB_DADO_ORBITAL (
     id_dado_orbital         NUMBER(15)      NOT NULL,
     id_fazenda              NUMBER(10)      NOT NULL,
@@ -433,6 +382,8 @@ CREATE TABLE TB_DADO_ORBITAL (
     temperatura_ambiente    NUMBER(6, 2)    NULL,
     latitude                NUMBER(10, 7)   NULL,
     longitude               NUMBER(11, 7)   NULL,
+    criado_em               TIMESTAMP       DEFAULT SYSTIMESTAMP NOT NULL,
+    atualizado_em           TIMESTAMP       DEFAULT SYSTIMESTAMP NOT NULL,
 
     CONSTRAINT PK_DADO_ORBITAL
         PRIMARY KEY (id_dado_orbital),
@@ -442,28 +393,55 @@ CREATE TABLE TB_DADO_ORBITAL (
         REFERENCES TB_FAZENDA (id_fazenda),
 
     CONSTRAINT CK_DADO_ORBITAL_FONTE
-        CHECK (fonte IN ('NASA_POWER', 'COPERNICUS', 'INPE', 'GOES_16')),
+        CHECK (fonte IN (
+            'NASA_POWER',
+            'COPERNICUS',
+            'INPE',
+            'GOES_16',
+            'OPEN_METEO',
+            'ERA5_ARCHIVE'
+        )),
 
     CONSTRAINT CK_DADO_ORBITAL_NEBULOSIDADE
         CHECK (nebulosidade BETWEEN 0 AND 100),
 
     CONSTRAINT CK_DADO_ORBITAL_PAR
-        CHECK (irradiancia_par >= 0)
+        CHECK (irradiancia_par >= 0),
+
+    CONSTRAINT CK_DADO_ORBITAL_LATITUDE
+        CHECK (latitude BETWEEN -90 AND 90),
+
+    CONSTRAINT CK_DADO_ORBITAL_LONGITUDE
+        CHECK (longitude BETWEEN -180 AND 180)
 );
 
-COMMENT ON TABLE  TB_DADO_ORBITAL                      IS 'Dados de radiacao e clima coletados via satelites NASA/Copernicus';
-COMMENT ON COLUMN TB_DADO_ORBITAL.id_dado_orbital       IS 'Identificador unico do registro orbital (PK)';
-COMMENT ON COLUMN TB_DADO_ORBITAL.id_fazenda            IS 'FK para TB_FAZENDA — fazenda referenciada';
-COMMENT ON COLUMN TB_DADO_ORBITAL.fonte                 IS 'Fonte: NASA_POWER, COPERNICUS, INPE, GOES_16';
-COMMENT ON COLUMN TB_DADO_ORBITAL.dt_coleta             IS 'Data e hora da coleta pelo satelite';
-COMMENT ON COLUMN TB_DADO_ORBITAL.irradiancia_par        IS 'Radiacao fotossinteticamente ativa em W/m2';
-COMMENT ON COLUMN TB_DADO_ORBITAL.nebulosidade          IS 'Cobertura de nuvens em percentual (0-100%)';
-COMMENT ON COLUMN TB_DADO_ORBITAL.temperatura_ambiente  IS 'Temperatura do ar em graus Celsius';
-COMMENT ON COLUMN TB_DADO_ORBITAL.latitude              IS 'Latitude do ponto amostral do satelite';
-COMMENT ON COLUMN TB_DADO_ORBITAL.longitude             IS 'Longitude do ponto amostral do satelite';
+CREATE TABLE TB_DADO_ORBITAL_BR (
+    id_dado_orbital_br  NUMBER(15)      NOT NULL,
+    cod_estacao         VARCHAR2(10)    NOT NULL,
+    nome_estacao        VARCHAR2(100)   NULL,
+    dt_medicao          VARCHAR2(10)    NOT NULL,
+    hr_medicao          VARCHAR2(4)     NULL,
+    temp_maxima         NUMBER(6, 2)    NULL,
+    temp_minima         NUMBER(6, 2)    NULL,
+    temp_media          NUMBER(6, 2)    NULL,
+    umidade_relativa    NUMBER(6, 2)    NULL,
+    precipitacao        NUMBER(8, 2)    NULL,
+    velocidade_vento    NUMBER(6, 2)    NULL,
+    direcao_vento       NUMBER(6, 2)    NULL,
+    pressao_atm         NUMBER(8, 2)    NULL,
+    radiacao_global     NUMBER(10, 2)   NULL,
+    json_original       CLOB            NULL,
+    criado_em           TIMESTAMP       DEFAULT SYSTIMESTAMP NOT NULL,
+    atualizado_em       TIMESTAMP       DEFAULT SYSTIMESTAMP NOT NULL,
+
+    CONSTRAINT PK_DADO_ORBITAL_BR
+        PRIMARY KEY (id_dado_orbital_br),
+
+    CONSTRAINT UQ_DADO_ORBITAL_BR_ESTACAO_DATA_HORA
+        UNIQUE (cod_estacao, dt_medicao, hr_medicao)
+);
 
 CREATE TABLE TB_PREVISOES_IA (
-
     id_previsao         NUMBER(15)      NOT NULL,
     id_tanque           NUMBER(10)      NOT NULL,
     id_dado_orbital     NUMBER(15)      NOT NULL,
@@ -472,6 +450,8 @@ CREATE TABLE TB_PREVISOES_IA (
     dt_pico_previsto    DATE            NOT NULL,
     confianca_pct       NUMBER(5, 2)    NOT NULL,
     modelo_utilizado    VARCHAR2(100)   NOT NULL,
+    criado_em           TIMESTAMP       DEFAULT SYSTIMESTAMP NOT NULL,
+    atualizado_em       TIMESTAMP       DEFAULT SYSTIMESTAMP NOT NULL,
 
     CONSTRAINT PK_PREVISOES_IA
         PRIMARY KEY (id_previsao),
@@ -494,18 +474,7 @@ CREATE TABLE TB_PREVISOES_IA (
         CHECK (dt_pico_previsto >= dt_previsao)
 );
 
-COMMENT ON TABLE  TB_PREVISOES_IA                    IS 'Previsoes de producao de biomassa geradas pelo motor de IA';
-COMMENT ON COLUMN TB_PREVISOES_IA.id_previsao         IS 'Identificador unico da previsao (PK)';
-COMMENT ON COLUMN TB_PREVISOES_IA.id_tanque           IS 'FK para TB_TANQUE — tanque alvo da previsao';
-COMMENT ON COLUMN TB_PREVISOES_IA.id_dado_orbital     IS 'FK para TB_DADO_ORBITAL — insumo climatico da IA';
-COMMENT ON COLUMN TB_PREVISOES_IA.dt_previsao         IS 'Data de geracao da previsao pelo modelo';
-COMMENT ON COLUMN TB_PREVISOES_IA.biomassa_g_l        IS 'Biomassa estimada em g/L';
-COMMENT ON COLUMN TB_PREVISOES_IA.dt_pico_previsto    IS 'Data prevista para o pico maximo de producao celular';
-COMMENT ON COLUMN TB_PREVISOES_IA.confianca_pct       IS 'Percentual de confianca do modelo de IA (0-100%)';
-COMMENT ON COLUMN TB_PREVISOES_IA.modelo_utilizado    IS 'Identificador da versao do modelo de IA (ex: AlgaNet-v2.1)';
-
 CREATE TABLE TB_LOTE_BIOMASSA (
-
     id_lote             NUMBER(10)      NOT NULL,
     id_fazenda          NUMBER(10)      NOT NULL,
     id_tanque           NUMBER(10)      NOT NULL,
@@ -514,6 +483,8 @@ CREATE TABLE TB_LOTE_BIOMASSA (
     preco_unitario      NUMBER(10, 2)   NOT NULL,
     status              VARCHAR2(15)    DEFAULT 'DISPONIVEL' NOT NULL,
     dt_colheita         DATE            DEFAULT SYSDATE NOT NULL,
+    criado_em           TIMESTAMP       DEFAULT SYSTIMESTAMP NOT NULL,
+    atualizado_em       TIMESTAMP       DEFAULT SYSTIMESTAMP NOT NULL,
 
     CONSTRAINT PK_LOTE_BIOMASSA
         PRIMARY KEY (id_lote),
@@ -536,18 +507,7 @@ CREATE TABLE TB_LOTE_BIOMASSA (
         CHECK (status IN ('DISPONIVEL', 'RESERVADO', 'VENDIDO', 'CANCELADO'))
 );
 
-COMMENT ON TABLE  TB_LOTE_BIOMASSA               IS 'Lotes de biomassa colhidos e disponibilizados no marketplace B2B';
-COMMENT ON COLUMN TB_LOTE_BIOMASSA.id_lote        IS 'Identificador unico do lote (PK)';
-COMMENT ON COLUMN TB_LOTE_BIOMASSA.id_fazenda     IS 'FK para TB_FAZENDA — fazenda produtora';
-COMMENT ON COLUMN TB_LOTE_BIOMASSA.id_tanque      IS 'FK para TB_TANQUE — tanque de origem da colheita';
-COMMENT ON COLUMN TB_LOTE_BIOMASSA.taxonomia_alga IS 'Nome cientifico da especie (ex: Chlorella vulgaris)';
-COMMENT ON COLUMN TB_LOTE_BIOMASSA.peso_kg        IS 'Peso total do lote colhido em quilogramas';
-COMMENT ON COLUMN TB_LOTE_BIOMASSA.preco_unitario IS 'Preco de venda por kg em Reais (R$)';
-COMMENT ON COLUMN TB_LOTE_BIOMASSA.status         IS 'Status: DISPONIVEL, RESERVADO, VENDIDO, CANCELADO';
-COMMENT ON COLUMN TB_LOTE_BIOMASSA.dt_colheita    IS 'Data de realizacao da colheita';
-
 CREATE TABLE TB_CREDITO_CARBONO (
-
     id_credito          NUMBER(10)      NOT NULL,
     id_fazenda          NUMBER(10)      NOT NULL,
     id_lote             NUMBER(10)      NOT NULL,
@@ -555,6 +515,8 @@ CREATE TABLE TB_CREDITO_CARBONO (
     hash_auditoria      VARCHAR2(64)    NOT NULL,
     status              VARCHAR2(15)    DEFAULT 'GERADO' NOT NULL,
     dt_validacao        DATE            NULL,
+    criado_em           TIMESTAMP       DEFAULT SYSTIMESTAMP NOT NULL,
+    atualizado_em       TIMESTAMP       DEFAULT SYSTIMESTAMP NOT NULL,
 
     CONSTRAINT PK_CREDITO_CARBONO
         PRIMARY KEY (id_credito),
@@ -577,26 +539,18 @@ CREATE TABLE TB_CREDITO_CARBONO (
         CHECK (status IN ('GERADO', 'VALIDADO', 'DISPONIVEL', 'VENDIDO', 'CANCELADO'))
 );
 
-COMMENT ON TABLE  TB_CREDITO_CARBONO               IS 'Creditos de carbono gerados pelo sequestro de CO2 das microalgas';
-COMMENT ON COLUMN TB_CREDITO_CARBONO.id_credito     IS 'Identificador unico do credito (PK)';
-COMMENT ON COLUMN TB_CREDITO_CARBONO.id_fazenda     IS 'FK para TB_FAZENDA — fazenda geradora do credito';
-COMMENT ON COLUMN TB_CREDITO_CARBONO.id_lote        IS 'FK para TB_LOTE_BIOMASSA — lote que originou o credito';
-COMMENT ON COLUMN TB_CREDITO_CARBONO.co2_toneladas  IS 'Toneladas de CO2 sequestrado calculadas para o lote';
-COMMENT ON COLUMN TB_CREDITO_CARBONO.hash_auditoria IS 'Hash SHA-256 para garantia de integridade e auditoria';
-COMMENT ON COLUMN TB_CREDITO_CARBONO.status         IS 'Status: GERADO, VALIDADO, DISPONIVEL, VENDIDO, CANCELADO';
-COMMENT ON COLUMN TB_CREDITO_CARBONO.dt_validacao   IS 'Data de validacao por orgao certificador (ex: VERRA, Gold Standard)';
-
-
 CREATE TABLE TB_TRANSACAO_MARKETPLACE (
-    id_transacao        NUMBER(15)      NOT NULL,
-    id_usuario_comprador NUMBER(10)     NOT NULL,
-    id_lote             NUMBER(10)      NULL,
-    id_credito          NUMBER(10)      NULL,
-    tipo_transacao      VARCHAR2(25)    NOT NULL,
-    quantidade          NUMBER(10, 4)   NOT NULL,
-    valor_total         NUMBER(15, 2)   NOT NULL,
-    status              VARCHAR2(15)    DEFAULT 'PENDENTE' NOT NULL,
-    dt_transacao        TIMESTAMP       DEFAULT SYSTIMESTAMP NOT NULL,
+    id_transacao          NUMBER(15)      NOT NULL,
+    id_usuario_comprador  NUMBER(10)      NOT NULL,
+    id_lote               NUMBER(10)      NULL,
+    id_credito            NUMBER(10)      NULL,
+    tipo_transacao        VARCHAR2(25)    NOT NULL,
+    quantidade            NUMBER(10, 4)   NOT NULL,
+    valor_total           NUMBER(15, 2)   NOT NULL,
+    status                VARCHAR2(15)    DEFAULT 'PENDENTE' NOT NULL,
+    dt_transacao          TIMESTAMP       DEFAULT SYSTIMESTAMP NOT NULL,
+    criado_em             TIMESTAMP       DEFAULT SYSTIMESTAMP NOT NULL,
+    atualizado_em         TIMESTAMP       DEFAULT SYSTIMESTAMP NOT NULL,
 
     CONSTRAINT PK_TRANSACAO_MARKETPLACE
         PRIMARY KEY (id_transacao),
@@ -633,20 +587,174 @@ CREATE TABLE TB_TRANSACAO_MARKETPLACE (
         CHECK (status IN ('PENDENTE', 'CONFIRMADA', 'CANCELADA', 'ESTORNADA'))
 );
 
-COMMENT ON TABLE  TB_TRANSACAO_MARKETPLACE                   IS 'Registro de transacoes de compra e venda no marketplace B2B';
-COMMENT ON COLUMN TB_TRANSACAO_MARKETPLACE.id_transacao       IS 'Identificador unico da transacao (PK)';
-COMMENT ON COLUMN TB_TRANSACAO_MARKETPLACE.id_usuario_comprador IS 'FK para TB_USUARIO — comprador da transacao';
-COMMENT ON COLUMN TB_TRANSACAO_MARKETPLACE.id_lote            IS 'FK para TB_LOTE_BIOMASSA (NULL em transacoes de credito)';
-COMMENT ON COLUMN TB_TRANSACAO_MARKETPLACE.id_credito         IS 'FK para TB_CREDITO_CARBONO (NULL em transacoes de biomassa)';
-COMMENT ON COLUMN TB_TRANSACAO_MARKETPLACE.tipo_transacao     IS 'Tipo: COMPRA_BIOMASSA ou COMPRA_CREDITO_CARBONO';
-COMMENT ON COLUMN TB_TRANSACAO_MARKETPLACE.quantidade         IS 'Quantidade transacionada (kg ou toneladas CO2)';
-COMMENT ON COLUMN TB_TRANSACAO_MARKETPLACE.valor_total        IS 'Valor financeiro total da transacao em Reais (R$)';
-COMMENT ON COLUMN TB_TRANSACAO_MARKETPLACE.status             IS 'Status: PENDENTE, CONFIRMADA, CANCELADA, ESTORNADA';
-COMMENT ON COLUMN TB_TRANSACAO_MARKETPLACE.dt_transacao       IS 'Timestamp da realizacao da transacao';
+-- ============================================================
+-- SEÇÃO 3: TRIGGERS PARA IDS AUTOMÁTICOS
+-- ============================================================
 
+CREATE OR REPLACE TRIGGER TRG_BI_TB_PERFIL
+BEFORE INSERT ON TB_PERFIL
+FOR EACH ROW
+WHEN (NEW.id_perfil IS NULL)
+BEGIN
+    SELECT SQ_PERFIL.NEXTVAL
+    INTO :NEW.id_perfil
+    FROM dual;
+END;
+/
 
-CREATE INDEX IDX_USUARIO_EMAIL
-    ON TB_USUARIO (email);
+CREATE OR REPLACE TRIGGER TRG_BI_TB_USUARIO
+BEFORE INSERT ON TB_USUARIO
+FOR EACH ROW
+WHEN (NEW.id_usuario IS NULL)
+BEGIN
+    SELECT SQ_USUARIO.NEXTVAL
+    INTO :NEW.id_usuario
+    FROM dual;
+END;
+/
+
+CREATE OR REPLACE TRIGGER TRG_BI_TB_FAZENDA
+BEFORE INSERT ON TB_FAZENDA
+FOR EACH ROW
+WHEN (NEW.id_fazenda IS NULL)
+BEGIN
+    SELECT SQ_FAZENDA.NEXTVAL
+    INTO :NEW.id_fazenda
+    FROM dual;
+END;
+/
+
+CREATE OR REPLACE TRIGGER TRG_BI_TB_TANQUE
+BEFORE INSERT ON TB_TANQUE
+FOR EACH ROW
+WHEN (NEW.id_tanque IS NULL)
+BEGIN
+    SELECT SQ_TANQUE.NEXTVAL
+    INTO :NEW.id_tanque
+    FROM dual;
+END;
+/
+
+CREATE OR REPLACE TRIGGER TRG_BI_TB_DISPOSITIVO_IOT
+BEFORE INSERT ON TB_DISPOSITIVO_IOT
+FOR EACH ROW
+WHEN (NEW.id_dispositivo IS NULL)
+BEGIN
+    SELECT SQ_DISPOSITIVO_IOT.NEXTVAL
+    INTO :NEW.id_dispositivo
+    FROM dual;
+END;
+/
+
+CREATE OR REPLACE TRIGGER TRG_BI_TB_METRICAS_TANQUE
+BEFORE INSERT ON TB_METRICAS_TANQUE
+FOR EACH ROW
+WHEN (NEW.id_metrica IS NULL)
+BEGIN
+    SELECT SQ_METRICAS_TANQUE.NEXTVAL
+    INTO :NEW.id_metrica
+    FROM dual;
+END;
+/
+
+CREATE OR REPLACE TRIGGER TRG_BI_TB_ALERTA_CRITICO
+BEFORE INSERT ON TB_ALERTA_CRITICO
+FOR EACH ROW
+WHEN (NEW.id_alerta IS NULL)
+BEGIN
+    SELECT SQ_ALERTA_CRITICO.NEXTVAL
+    INTO :NEW.id_alerta
+    FROM dual;
+END;
+/
+
+CREATE OR REPLACE TRIGGER TRG_BI_TB_DADO_ORBITAL
+BEFORE INSERT ON TB_DADO_ORBITAL
+FOR EACH ROW
+WHEN (NEW.id_dado_orbital IS NULL)
+BEGIN
+    SELECT SQ_DADO_ORBITAL.NEXTVAL
+    INTO :NEW.id_dado_orbital
+    FROM dual;
+END;
+/
+
+CREATE OR REPLACE TRIGGER TRG_BI_TB_DADO_ORBITAL_BR
+BEFORE INSERT ON TB_DADO_ORBITAL_BR
+FOR EACH ROW
+WHEN (NEW.id_dado_orbital_br IS NULL)
+BEGIN
+    SELECT SQ_DADO_ORBITAL_BR.NEXTVAL
+    INTO :NEW.id_dado_orbital_br
+    FROM dual;
+END;
+/
+
+CREATE OR REPLACE TRIGGER TRG_BI_TB_PREVISOES_IA
+BEFORE INSERT ON TB_PREVISOES_IA
+FOR EACH ROW
+WHEN (NEW.id_previsao IS NULL)
+BEGIN
+    SELECT SQ_PREVISOES_IA.NEXTVAL
+    INTO :NEW.id_previsao
+    FROM dual;
+END;
+/
+
+CREATE OR REPLACE TRIGGER TRG_BI_TB_LOTE_BIOMASSA
+BEFORE INSERT ON TB_LOTE_BIOMASSA
+FOR EACH ROW
+WHEN (NEW.id_lote IS NULL)
+BEGIN
+    SELECT SQ_LOTE_BIOMASSA.NEXTVAL
+    INTO :NEW.id_lote
+    FROM dual;
+END;
+/
+
+CREATE OR REPLACE TRIGGER TRG_BI_TB_CREDITO_CARBONO
+BEFORE INSERT ON TB_CREDITO_CARBONO
+FOR EACH ROW
+WHEN (NEW.id_credito IS NULL)
+BEGIN
+    SELECT SQ_CREDITO_CARBONO.NEXTVAL
+    INTO :NEW.id_credito
+    FROM dual;
+END;
+/
+
+CREATE OR REPLACE TRIGGER TRG_BI_TB_TRANSACAO_MARKETPLACE
+BEFORE INSERT ON TB_TRANSACAO_MARKETPLACE
+FOR EACH ROW
+WHEN (NEW.id_transacao IS NULL)
+BEGIN
+    SELECT SQ_TRANSACAO_MARKETPLACE.NEXTVAL
+    INTO :NEW.id_transacao
+    FROM dual;
+END;
+/
+
+-- ============================================================
+-- SEÇÃO 4: COMMENTS
+-- ============================================================
+
+COMMENT ON TABLE TB_PERFIL IS 'Catalogo de perfis de acesso ao sistema Phycocarbon';
+COMMENT ON TABLE TB_USUARIO IS 'Usuarios cadastrados na plataforma Phycocarbon';
+COMMENT ON TABLE TB_FAZENDA IS 'Fazendas biologicas de cultivo de microalgas';
+COMMENT ON TABLE TB_TANQUE IS 'Tanques ou biofotorreatores de cultivo de microalgas';
+COMMENT ON TABLE TB_DISPOSITIVO_IOT IS 'Dispositivos ESP32 instalados nos tanques para monitoramento IoT';
+COMMENT ON TABLE TB_METRICAS_TANQUE IS 'Serie temporal de leituras IoT dos sensores instalados nos tanques';
+COMMENT ON TABLE TB_ALERTA_CRITICO IS 'Alertas automaticos gerados quando metricas saem dos limites';
+COMMENT ON TABLE TB_DADO_ORBITAL IS 'Dados de radiacao e clima coletados via fontes orbitais ou meteorologicas';
+COMMENT ON TABLE TB_DADO_ORBITAL_BR IS 'Dados meteorologicos brasileiros coletados de estacoes INMET';
+COMMENT ON TABLE TB_PREVISOES_IA IS 'Previsoes de producao de biomassa geradas pelo motor de IA';
+COMMENT ON TABLE TB_LOTE_BIOMASSA IS 'Lotes de biomassa colhidos e disponibilizados no marketplace B2B';
+COMMENT ON TABLE TB_CREDITO_CARBONO IS 'Creditos de carbono gerados pelo sequestro de CO2 das microalgas';
+COMMENT ON TABLE TB_TRANSACAO_MARKETPLACE IS 'Registro de transacoes de compra e venda no marketplace B2B';
+
+-- ============================================================
+-- SEÇÃO 5: ÍNDICES
+-- ============================================================
 
 CREATE INDEX IDX_USUARIO_PERFIL
     ON TB_USUARIO (id_perfil);
@@ -681,11 +789,23 @@ CREATE INDEX IDX_ALERTA_DT
 CREATE INDEX IDX_DADO_ORBITAL_FAZENDA_DT
     ON TB_DADO_ORBITAL (id_fazenda, dt_coleta DESC);
 
+CREATE INDEX IDX_DADO_ORBITAL_FONTE
+    ON TB_DADO_ORBITAL (fonte);
+
+CREATE INDEX IDX_DADO_ORBITAL_BR_ESTACAO_DT
+    ON TB_DADO_ORBITAL_BR (cod_estacao, dt_medicao DESC, hr_medicao DESC);
+
 CREATE INDEX IDX_PREVISAO_TANQUE_DT
     ON TB_PREVISOES_IA (id_tanque, dt_pico_previsto);
 
+CREATE INDEX IDX_PREVISAO_DADO_ORBITAL
+    ON TB_PREVISOES_IA (id_dado_orbital);
+
 CREATE INDEX IDX_LOTE_FAZENDA_STATUS
     ON TB_LOTE_BIOMASSA (id_fazenda, status);
+
+CREATE INDEX IDX_LOTE_TANQUE
+    ON TB_LOTE_BIOMASSA (id_tanque);
 
 CREATE INDEX IDX_CREDITO_STATUS
     ON TB_CREDITO_CARBONO (status);
@@ -693,18 +813,28 @@ CREATE INDEX IDX_CREDITO_STATUS
 CREATE INDEX IDX_CREDITO_FAZENDA
     ON TB_CREDITO_CARBONO (id_fazenda);
 
+CREATE INDEX IDX_CREDITO_LOTE
+    ON TB_CREDITO_CARBONO (id_lote);
+
 CREATE INDEX IDX_TRANSACAO_COMPRADOR
     ON TB_TRANSACAO_MARKETPLACE (id_usuario_comprador);
+
+CREATE INDEX IDX_TRANSACAO_LOTE
+    ON TB_TRANSACAO_MARKETPLACE (id_lote);
+
+CREATE INDEX IDX_TRANSACAO_CREDITO
+    ON TB_TRANSACAO_MARKETPLACE (id_credito);
 
 CREATE INDEX IDX_TRANSACAO_DT
     ON TB_TRANSACAO_MARKETPLACE (dt_transacao DESC);
 
-
--- SECAO 4: CONFIRMACAO FINAL
+-- ============================================================
+-- SEÇÃO 6: CONFIRMAÇÃO FINAL
+-- ============================================================
 
 SELECT
-    table_name      AS "TABELA",
-    num_rows        AS "REGISTROS"
+    table_name AS "TABELA",
+    num_rows   AS "REGISTROS"
 FROM
     user_tables
 WHERE
@@ -717,6 +847,7 @@ WHERE
         'TB_METRICAS_TANQUE',
         'TB_ALERTA_CRITICO',
         'TB_DADO_ORBITAL',
+        'TB_DADO_ORBITAL_BR',
         'TB_PREVISOES_IA',
         'TB_LOTE_BIOMASSA',
         'TB_CREDITO_CARBONO',
@@ -726,11 +857,11 @@ ORDER BY
     table_name;
 
 SELECT
-    sequence_name   AS "SEQUENCE",
-    min_value       AS "MIN",
-    max_value       AS "MAX",
-    increment_by    AS "INCREMENT",
-    cache_size      AS "CACHE"
+    sequence_name AS "SEQUENCE",
+    min_value     AS "MIN",
+    max_value     AS "MAX",
+    increment_by  AS "INCREMENT",
+    cache_size    AS "CACHE"
 FROM
     user_sequences
 WHERE
@@ -739,9 +870,20 @@ ORDER BY
     sequence_name;
 
 SELECT
-    index_name      AS "INDICE",
-    table_name      AS "TABELA",
-    uniqueness      AS "TIPO"
+    trigger_name AS "TRIGGER",
+    table_name   AS "TABELA",
+    status       AS "STATUS"
+FROM
+    user_triggers
+WHERE
+    trigger_name LIKE 'TRG_BI_%'
+ORDER BY
+    trigger_name;
+
+SELECT
+    index_name AS "INDICE",
+    table_name AS "TABELA",
+    uniqueness AS "TIPO"
 FROM
     user_indexes
 WHERE
@@ -754,6 +896,7 @@ WHERE
         'TB_METRICAS_TANQUE',
         'TB_ALERTA_CRITICO',
         'TB_DADO_ORBITAL',
+        'TB_DADO_ORBITAL_BR',
         'TB_PREVISOES_IA',
         'TB_LOTE_BIOMASSA',
         'TB_CREDITO_CARBONO',
