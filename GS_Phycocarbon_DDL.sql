@@ -4,9 +4,7 @@
 
 SET SERVEROUTPUT ON;
 
--- ============================================================
 -- SEÇÃO 0: LIMPEZA DO AMBIENTE
--- ============================================================
 
 BEGIN
     FOR t IN (
@@ -58,9 +56,7 @@ BEGIN
 END;
 /
 
--- ============================================================
 -- SEÇÃO 1: SEQUENCES
--- ============================================================
 
 CREATE SEQUENCE SQ_PERFIL
     START WITH 1
@@ -140,9 +136,8 @@ CREATE SEQUENCE SQ_TRANSACAO_MARKETPLACE
     CACHE 20
     NOCYCLE;
 
--- ============================================================
 -- SEÇÃO 2: TABELAS
--- ============================================================
+-- 
 
 CREATE TABLE TB_PERFIL (
     id_perfil       NUMBER(5)       NOT NULL,
@@ -587,9 +582,7 @@ CREATE TABLE TB_TRANSACAO_MARKETPLACE (
         CHECK (status IN ('PENDENTE', 'CONFIRMADA', 'CANCELADA', 'ESTORNADA'))
 );
 
--- ============================================================
 -- SEÇÃO 3: TRIGGERS PARA IDS AUTOMÁTICOS
--- ============================================================
 
 CREATE OR REPLACE TRIGGER TRG_BI_TB_PERFIL
 BEFORE INSERT ON TB_PERFIL
@@ -734,9 +727,7 @@ BEGIN
 END;
 /
 
--- ============================================================
 -- SEÇÃO 4: COMMENTS
--- ============================================================
 
 COMMENT ON TABLE TB_PERFIL IS 'Catalogo de perfis de acesso ao sistema Phycocarbon';
 COMMENT ON TABLE TB_USUARIO IS 'Usuarios cadastrados na plataforma Phycocarbon';
@@ -752,9 +743,7 @@ COMMENT ON TABLE TB_LOTE_BIOMASSA IS 'Lotes de biomassa colhidos e disponibiliza
 COMMENT ON TABLE TB_CREDITO_CARBONO IS 'Creditos de carbono gerados pelo sequestro de CO2 das microalgas';
 COMMENT ON TABLE TB_TRANSACAO_MARKETPLACE IS 'Registro de transacoes de compra e venda no marketplace B2B';
 
--- ============================================================
 -- SEÇÃO 5: ÍNDICES
--- ============================================================
 
 CREATE INDEX IDX_USUARIO_PERFIL
     ON TB_USUARIO (id_perfil);
@@ -828,9 +817,7 @@ CREATE INDEX IDX_TRANSACAO_CREDITO
 CREATE INDEX IDX_TRANSACAO_DT
     ON TB_TRANSACAO_MARKETPLACE (dt_transacao DESC);
 
--- ============================================================
 -- SEÇÃO 6: CONFIRMAÇÃO FINAL
--- ============================================================
 
 SELECT
     table_name AS "TABELA",
