@@ -231,7 +231,7 @@ INSERT INTO TB_DISPOSITIVO_IOT (id_tanque, codigo_serie, topico_mqtt, modelo, at
 VALUES (9, 'ESP32-F4-TQ001-I0K2', 'algaspace/fazenda/4/tanque/9/metricas', 'ESP32-S3', 'S');
 
 INSERT INTO TB_DISPOSITIVO_IOT (id_tanque, codigo_serie, topico_mqtt, modelo, ativo)
-VALUES (10, 'ESP32-F5-BR001-J1L3', 'algaspace/fazenda/5/tanque/10/metricas', 'ESP32-S3', 'S');
+VALUES (10, 'ESP32-F5-BR001-J1L3', 'phycocarbon/fiap/tanque01/telemetria', 'ESP32-S3', 'S');
 
 INSERT INTO TB_DISPOSITIVO_IOT (id_tanque, codigo_serie, topico_mqtt, modelo, ativo)
 VALUES (11, 'ESP32-F5-BR002-K2M4', 'algaspace/fazenda/5/tanque/11/metricas', 'ESP32-S3', 'S');
